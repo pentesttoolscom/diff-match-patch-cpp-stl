@@ -668,27 +668,7 @@ class diff_match_patch {
       v1[i] = 0;
     }
 
-    // Solve for d == 0
-    // At the beginning, the path can only end on the first diagonal (indexed 0). Moving away from
-    //  the diagonal (horizonally or vertically) adds cost to the difference d. But at this step,
-    //  we only care about the paths with d = 0.
-    {
-      int x = 0, y = 0;
-      while (text1[x] == text2[y]) {
-        x++;
-        y++;
-      }
-      v1[0] = x;
-
-      // The texts are equal
-      if (x == text1_len) {
-        return 0;
-      }
-    }
-
     int d_max = text1_len + text2_len;
-    int len_min = text1_len;
-    int len_max = text2_len;
     int kstart = 0;
     int kend = 0;
 
