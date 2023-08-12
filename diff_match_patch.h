@@ -281,7 +281,7 @@ class diff_match_patch {
     return diffs;
   }
 
-  long long diff_main_only_count(const string_t &text1, const string_t &text2, bool checklines = true, int max_diff = -1) {
+  long long diff_main_only_count(const string_t &text1, const string_t &text2, int max_diff = -1) {
     clock_t deadline;
     if (Diff_Timeout <= 0) {
       deadline = std::numeric_limits<clock_t>::max();
