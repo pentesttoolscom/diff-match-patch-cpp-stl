@@ -650,23 +650,21 @@ class diff_match_patch {
     diffs.push_back(Diff(INSERT, text2));
   }
 
-  typedef int LL;
-
   static long long diff_bisect_only_count(string_t &text1, string_t &text2, clock_t deadline, int max_diff = -1) {
-    LL text1_len = text1.size(); 
-    LL text2_len = text2.size();
-    LL *_v1 = new LL[(text1_len + text2_len) * 2];
-    LL v_off = text1_len + text2_len;
+    int text1_len = text1.size();
+    int text2_len = text2.size();
+    int *_v1 = new int[(text1_len + text2_len) * 2];
+    int v_off = text1_len + text2_len;
     // Use an offset from the real array, in order to use negative indexes
     // v1[i] == x means that, for a given depth (or difference) d, the furthest path that ends
     //  on the i-th diagonal, ends at the coordinates (x, d - x)
     // v1 keeps track of the longest path for each diagonal
-    LL *v1 = _v1 + v_off; 
+    int *v1 = _v1 + v_off;
 
-    for (LL i = -v_off; i < 0; i++) {
+    for (int i = -v_off; i < 0; i++) {
       v1[i] = -1;
     }
-    for (LL i = 0; i < v_off; i++) {
+    for (int i = 0; i < v_off; i++) {
       v1[i] = 0;
     }
 
@@ -675,7 +673,7 @@ class diff_match_patch {
     //  the diagonal (horizonally or vertically) adds cost to the difference d. But at this step,
     //  we only care about the paths with d = 0.
     {
-      LL x = 0, y = 0;
+      int x = 0, y = 0;
       while (text1[x] == text2[y]) {
         x++;
         y++;
@@ -688,11 +686,11 @@ class diff_match_patch {
       }
     }
 
-    LL d_max = text1_len + text2_len;
-    LL len_min = text1_len;
-    LL len_max = text2_len;
-    LL kstart = 0;
-    LL kend = 0;
+    int d_max = text1_len + text2_len;
+    int len_min = text1_len;
+    int len_max = text2_len;
+    int kstart = 0;
+    int kend = 0;
 
     if (max_diff != -1) {
       d_max = std::min(max_diff, d_max);
@@ -703,21 +701,21 @@ class diff_match_patch {
     //  step, increase the depth d by 1. Use the info about depth d-1 to find the paths of depth d.
     // Both the info at step d-1 and step d are stored in v1. That's because each time we update
     //  values at the index of a particular parity, either even or odd, alternating.
-    for (LL d = 1; d <= d_max; d++) {
+    for (int d = 1; d <= d_max; d++) {
       if (clock() > deadline) {
         break;
       }
 
       // Iterate through each diagonal k, of a particular parity.
-      for (LL k = -d + kstart; k <= d - kend; k += 2) {
-        LL x;
+      for (int k = -d + kstart; k <= d - kend; k += 2) {
+        int x;
         if (v1[k - 1] >= v1[k + 1]) {
           x = v1[k - 1] + 1;
         } else {
           x = v1[k + 1];
         }
 
-        LL y = x - k;
+        int y = x - k;
 
         while (x < text1_len && y < text2_len && text1[x] == text2[y]) {
           x++;
