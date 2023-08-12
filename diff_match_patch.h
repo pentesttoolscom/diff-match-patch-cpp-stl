@@ -436,12 +436,12 @@ class diff_match_patch {
   static long long diff_compute_only_count(string_t text1, string_t text2, clock_t deadline, int max_diff = -1) {
     if (text1.empty()) {
       // Just add some text (speedup).
-      return text2.size();
+      return text2.length();
     }
 
     if (text2.empty()) {
       // Just delete some text (speedup).
-      return text1.size();
+      return text1.length();
     }
 
     {
@@ -450,13 +450,13 @@ class diff_match_patch {
       const size_t i = longtext.find(shorttext);
       if (i != string_t::npos) {
         // Shorter text is inside the longer text (speedup).
-        return longtext.size() - shorttext.size();
+        return longtext.length() - shorttext.length();
       }
 
       if (shorttext.length() == 1) {
         // Single character string.
         // After the previous speedup, the character can't be an equality.
-        return 1 + longtext.size();
+        return 1 + longtext.length();
       }
       // Garbage collect longtext and shorttext by scoping out.
     }
@@ -651,8 +651,8 @@ class diff_match_patch {
   }
 
   static long long diff_bisect_only_count(string_t &text1, string_t &text2, clock_t deadline, int max_diff = -1) {
-    int text1_len = text1.size();
-    int text2_len = text2.size();
+    int text1_len = text1.length();
+    int text2_len = text2.length();
     int *_v1 = new int[(text1_len + text2_len + 1) * 2 + 1];
     int v_off = text1_len + text2_len + 1;
     // Use an offset from the real array, in order to use negative indexes
