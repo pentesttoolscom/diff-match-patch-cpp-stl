@@ -653,8 +653,8 @@ class diff_match_patch {
   static long long diff_bisect_only_count(string_t &text1, string_t &text2, clock_t deadline, int max_diff = -1) {
     int text1_len = text1.size();
     int text2_len = text2.size();
-    int *_v1 = new int[(text1_len + text2_len) * 2];
-    int v_off = text1_len + text2_len;
+    int *_v1 = new int[(text1_len + text2_len + 1) * 2 + 1];
+    int v_off = text1_len + text2_len + 1;
     // Use an offset from the real array, in order to use negative indexes
     // v1[i] == x means that, for a given depth (or difference) d, the furthest path that ends
     //  on the i-th diagonal, ends at the coordinates (x, d - x)
