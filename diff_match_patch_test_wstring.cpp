@@ -97,6 +97,7 @@ class diff_match_patch_test : diff_match_patch<wastring> {
       testDiffLevenshtein();
       testDiffBisect();
       testDiffMain();
+      testDiffMainOnlyCount();
 
       testMatchAlphabet();
       testMatchBitap();
@@ -633,6 +634,70 @@ class diff_match_patch_test : diff_match_patch<wastring> {
     Strings texts_linemode = diff_rebuildtexts(dmp.diff_main(a, b, true));
     Strings texts_textmode = diff_rebuildtexts(dmp.diff_main(a, b, false));
     assertEquals("diff_main: Overlap line-mode.", texts_textmode, texts_linemode);
+
+    // Test null inputs -- not needed because nulls can't be passed in string_t&.
+  }
+
+  void testDiffMainOnlyCount() {
+    // Perform a trivial diff.
+    assertEquals("diff_main_only_count: Null case.", 0, dmp.diff_main_only_count("", ""));
+
+    assertEquals("diff_main_only_count: Equality.", 0, dmp.diff_main_only_count("abc", "abc"));
+
+    assertEquals("diff_main_only_count: Simple insertion.", 3, dmp.diff_main_only_count("abc", "ab123c"));
+
+    assertEquals("diff_main_only_count: Simple deletion.", 3, dmp.diff_main_only_count("a123bc", "abc"));
+
+    assertEquals("diff_main_only_count: Two insertions.", 6, dmp.diff_main_only_count("abc", "a123b456c"));
+
+    assertEquals("diff_main_only_count: Two deletions.", 6, dmp.diff_main_only_count("a123b456c", "abc"));
+
+    // Perform a real diff.
+    // Switch off the timeout.
+    dmp.Diff_Timeout = 0;
+    assertEquals("diff_main_only_count: Simple case #1.", 2, dmp.diff_main_only_count("a", "b"));
+
+    assertEquals("diff_main_only_count: Simple case #2.", 14, dmp.diff_main_only_count("Apples are a fruit.", "Bananas are also fruit."));
+
+    assertEquals("diff_main_only_count: Overlap #1.", 6, dmp.diff_main_only_count("1ayb2", "abxab"));
+
+    assertEquals("diff_main_only_count: Overlap #2.", 6, dmp.diff_main_only_count("abcy", "xaxcxabc"));
+
+    assertEquals("diff_main_only_count: Overlap #3.", 22, dmp.diff_main_only_count("ABCDa=bcd=efghijklmnopqrsEFGHIJKLMNOefg", "a-bcd-efghijklmnopqrs"));
+
+    assertEquals("diff_main_only_count: Large equality.", 13, dmp.diff_main_only_count("a [[Pennsylvania]] and [[New", " and [[Pennsylvania]]"));
+
+    dmp.Diff_Timeout = 0.1f;  // 100ms
+    // This test may 'fail' on extremely fast computers.  If so, just increase the text lengths.
+    string_t a = "`Twas brillig, and the slithy toves\nDid gyre and gimble in the wabe:\nAll mimsy were the borogoves,\nAnd the mome raths outgrabe.\n";
+    string_t b = "I am the very model of a modern major general,\nI've information vegetable, animal, and mineral,\nI know the kings of England, and I quote the fights historical,\nFrom Marathon to Waterloo, in order categorical.\n";
+    // Increase the text lengths by 1024 times to ensure a timeout.
+    for (int x = 0; x < 10; x++) {
+      a = a + a;
+      b = b + b;
+    }
+    clock_t startTime = clock();
+    dmp.diff_main_only_count(a, b);
+    clock_t endTime = clock();
+    // Test that we took at least the timeout period.
+    assertTrue("diff_main_only_count: Timeout min.", dmp.Diff_Timeout * CLOCKS_PER_SEC <= endTime - startTime);
+    // Test that we didn't take forever (be forgiving).
+    // Theoretically this test could fail very occasionally if the
+    // OS task swaps or locks up for a second at the wrong moment.
+    // Java seems to overrun by ~80% (compared with 10% for other languages).
+    // Therefore use an upper limit of 0.5s instead of 0.2s.
+    assertTrue("diff_main_only_count: Timeout max.", dmp.Diff_Timeout * CLOCKS_PER_SEC * 2 > endTime - startTime);
+    dmp.Diff_Timeout = 0;
+
+    // Test max_diff
+    assertEquals("diff_main_only_count: Null case.", 0, dmp.diff_main_only_count("", ""));
+    assertEquals("diff_main_only_count: Differentn.", 6, dmp.diff_main_only_count("abc", "def", 6));
+    assertEquals("diff_main_only_count: Different.", 6, dmp.diff_main_only_count("abc", "def", 7));
+    assertEquals("diff_main_only_count: Different.", 6, dmp.diff_main_only_count("abc", "def", 5));
+    assertEquals("diff_main_only_count: Different.", 6, dmp.diff_main_only_count("abc", "def", 0));
+    assertEquals("diff_main_only_count: Overlap #2.", 6, dmp.diff_main_only_count("abcy", "xaxcxabc", 6));
+    assertEquals("diff_main_only_count: Overlap #2.", 6, dmp.diff_main_only_count("abcy", "xaxcxabc", 7));
+    assertEquals("diff_main_only_count: Overlap #2.", 12, dmp.diff_main_only_count("abcy", "xaxcxabc", 5));
 
     // Test null inputs -- not needed because nulls can't be passed in string_t&.
   }

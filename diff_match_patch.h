@@ -281,6 +281,35 @@ class diff_match_patch {
     return diffs;
   }
 
+  long long diff_main_only_count(const string_t &text1, const string_t &text2, int max_diff = -1) {
+    clock_t deadline;
+    if (Diff_Timeout <= 0) {
+      deadline = std::numeric_limits<clock_t>::max();
+    } else {
+      deadline = clock() + (clock_t)(Diff_Timeout * CLOCKS_PER_SEC);
+    }
+
+    long long diff_count = 0;
+
+    // Check for equality (speedup).
+    if (text1 != text2) {
+      // Trim off common prefix (speedup).
+      int commonlength_prefix = diff_commonPrefix(text1, text2);
+      string_t textChopped1 = text1.substr(commonlength_prefix);
+      string_t textChopped2 = text2.substr(commonlength_prefix);
+
+      // Trim off common suffix (speedup).
+      int commonlength_suffix = diff_commonSuffix(textChopped1, textChopped2);
+      textChopped1 = textChopped1.substr(0, textChopped1.length() - commonlength_suffix);
+      textChopped2 = textChopped2.substr(0, textChopped2.length() - commonlength_suffix);
+
+      // Compute the diff on the middle block.
+      diff_count += diff_compute_only_count(textChopped1, textChopped2, deadline, max_diff);
+    }
+
+    return diff_count;
+  }
+
   /**
    * Find the differences between two texts.  Simplifies the problem by
    * stripping any common prefix or suffix off the texts before diffing.
@@ -402,6 +431,37 @@ class diff_match_patch {
     }
 
     diff_bisect(text1, text2, deadline, diffs);
+  }
+
+  static long long diff_compute_only_count(string_t text1, string_t text2, clock_t deadline, int max_diff = -1) {
+    if (text1.empty()) {
+      // Just add some text (speedup).
+      return text2.length();
+    }
+
+    if (text2.empty()) {
+      // Just delete some text (speedup).
+      return text1.length();
+    }
+
+    {
+      const string_t& longtext = text1.length() > text2.length() ? text1 : text2;
+      const string_t& shorttext = text1.length() > text2.length() ? text2 : text1;
+      const size_t i = longtext.find(shorttext);
+      if (i != string_t::npos) {
+        // Shorter text is inside the longer text (speedup).
+        return longtext.length() - shorttext.length();
+      }
+
+      if (shorttext.length() == 1) {
+        // Single character string.
+        // After the previous speedup, the character can't be an equality.
+        return 1 + longtext.length();
+      }
+      // Garbage collect longtext and shorttext by scoping out.
+    }
+
+    return diff_bisect_only_count(text1, text2, deadline, max_diff);
   }
 
   /**
@@ -588,6 +648,79 @@ class diff_match_patch {
     diffs.clear();
     diffs.push_back(Diff(DELETE, text1));
     diffs.push_back(Diff(INSERT, text2));
+  }
+
+  static long long diff_bisect_only_count(string_t &text1, string_t &text2, clock_t deadline, int max_diff = -1) {
+    int text1_len = text1.length();
+    int text2_len = text2.length();
+    int *_v1 = new int[(text1_len + text2_len + 1) * 2 + 1];
+    int v_off = text1_len + text2_len + 1;
+    // Use an offset from the real array, in order to use negative indexes
+    // v1[i] == x means that, for a given depth (or difference) d, the furthest path that ends
+    //  on the i-th diagonal, ends at the coordinates (x, d - x)
+    // v1 keeps track of the longest path for each diagonal
+    int *v1 = _v1 + v_off;
+
+    for (int i = -v_off; i < 0; i++) {
+      v1[i] = -1;
+    }
+    for (int i = 0; i < v_off; i++) {
+      v1[i] = 0;
+    }
+
+    int d_max = text1_len + text2_len;
+    int kstart = 0;
+    int kend = 0;
+
+    if (max_diff != -1) {
+      d_max = std::min(max_diff, d_max);
+    }
+
+    // Here, d refers to the numbers of differences, i.e. additions or deletions of one character.
+    // Perform a BFS-like algorithm, where we compute all the paths with a given depth. At each
+    //  step, increase the depth d by 1. Use the info about depth d-1 to find the paths of depth d.
+    // Both the info at step d-1 and step d are stored in v1. That's because each time we update
+    //  values at the index of a particular parity, either even or odd, alternating.
+    for (int d = 1; d <= d_max; d++) {
+      if (clock() > deadline) {
+        break;
+      }
+
+      // Iterate through each diagonal k, of a particular parity.
+      for (int k = -d + kstart; k <= d - kend; k += 2) {
+        int x;
+        if (v1[k - 1] >= v1[k + 1]) {
+          x = v1[k - 1] + 1;
+        } else {
+          x = v1[k + 1];
+        }
+
+        int y = x - k;
+
+        while (x < text1_len && y < text2_len && text1[x] == text2[y]) {
+          x++;
+          y++;
+        }
+
+        v1[k] = x;
+        if (x > text1_len) {
+          kend += 2;
+        } else if (y > text2_len) {
+          kstart += 2;
+        }
+      }
+
+      if (v1[text1_len - text2_len] == text1_len) {
+        delete _v1;
+        return d;
+      }
+    }
+
+    delete _v1;
+
+    // Diff took too long or exceeded the max_diff limit,
+    // number of diffs equals number of characters, no commonality at all.
+    return text1_len + text2_len;
   }
 
   /**
